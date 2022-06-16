@@ -8,13 +8,13 @@ Create a class extending `Rector\Core\Rector\AbstractRector`
 
 declare(strict_types=1);
 
-namespace Selrahcd\LearnRector\ModifyComment;
+namespace Selrahcd\LearnRector\ReplaceString;
 
 use PhpParser\Node;
 use Rector\Core\Rector\AbstractRector;
 use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
-final class ModifyCommentRector extends AbstractRector
+final class ReplaceStringRector extends AbstractRector
 {
 
     public function getNodeTypes(): array
@@ -42,13 +42,13 @@ Below is the body of a typical Rector test.
 
 declare(strict_types=1);
 
-namespace Selrahcd\LearnRector\ModifyComment;
+namespace Selrahcd\LearnRector\ReplaceString;
 
 use Iterator;
 use Rector\Testing\PHPUnit\AbstractRectorTestCase;
 use Symplify\SmartFileSystem\SmartFileInfo;
 
-final class ModifyCommentRectorTest extends AbstractRectorTestCase
+final class ReplaceStringRectorTest extends AbstractRectorTestCase
 {
     /**
      * @dataProvider provideData()
@@ -87,14 +87,14 @@ Add the new rule to the list of services.
 declare(strict_types=1);
 
 
-use Selrahcd\LearnRector\ModifyComment\ModifyCommentRector;
+use Selrahcd\LearnRector\ReplaceString\ReplaceStringRector;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
 return static function (
     ContainerConfigurator $containerConfigurator
 ): void {
     $services = $containerConfigurator->services();
-    $services->set(ModifyCommentRector::class);
+    $services->set(ReplaceStringRector::class);
 };
 ```
 
@@ -108,97 +108,116 @@ First part of the file is the original code, second part is the expected code af
 
 <?php
 
-// A comment
+'a';
 
 ?>
 -----
 <?php
 
-// A modified comment
+'b';
 
 ?>
 
 ```
+
+⚠️ The example file must not contain more than one new line at the end.
 
 ## Get the AST of the original code
 
 Copy the original code in `temp.php` and run `vendor/bin/php-parse --var-dump temp.php`
 
 ```
-./vendor/nikic/php-parser/bin/php-parse:91:
 array(1) {
   [0] =>
-  class PhpParser\Node\Stmt\Nop#1181 (1) {
+  class PhpParser\Node\Stmt\Expression#1181 (2) {
     protected $attributes =>
-    array(5) {
+    array(4) {
       'startLine' =>
-      int(5)
+      int(3)
       'startFilePos' =>
-      int(21)
-      'comments' =>
-      array(1) {
-        [0] =>
-        class PhpParser\Comment#1180 (7) {
-          protected $text =>
-          string(12) "// A comment"
-          protected $startLine =>
-          int(3)
-          protected $startFilePos =>
-          int(7)
-          protected $startTokenPos =>
-          int(2)
-          protected $endLine =>
-          int(3)
-          protected $endFilePos =>
-          int(18)
-          protected $endTokenPos =>
-          int(2)
-        }
-      }
+      int(7)
       'endLine' =>
-      int(5)
+      int(3)
       'endFilePos' =>
-      int(22)
+      int(10)
+    }
+    public $expr =>
+    class PhpParser\Node\Scalar\String_#1180 (2) {
+      protected $attributes =>
+      array(6) {
+        'startLine' =>
+        int(3)
+        'startFilePos' =>
+        int(7)
+        'endLine' =>
+        int(3)
+        'endFilePos' =>
+        int(9)
+        'kind' =>
+        int(1)
+        'rawValue' =>
+        string(3) "'a'"
+      }
+      public $value =>
+      string(1) "a"
     }
   }
 }
-
 ```
 
-Looking at the node hierarchy we can identify the node type we want to work on. Here `PhpParser\Node\Stmt\Nop`.
+Looking at the node hierarchy we can identify the node type we want to work on. Here `PhpParser\Node\Scalar\String_`.
 
 ## Add node type to Rector class
 
 ```diff
-final class ModifyCommentRector extends AbstractRector
+final class ReplaceStringRector extends AbstractRector
  
      public function getNodeTypes(): array
      {
 -        return [];
 +        return [
-+             Node\Stmt\Nop::class
++            PhpParser\Node\Scalar\String_::class
 +        ];
      }
 ```
 
-Because `ModifyCommentRector::refactor` doesn't return anything yet no change is made in the original code.
+Because `ReplaceStringRectorTest::refactor` doesn't return anything yet no change is made in the original code.
 
 ```
-src/ModifyComment/Fixture/replace-comment.php.inc
+src/ReplaceString/Fixture/replace-string.php.inc
 Failed asserting that string matches format description.
 --- Expected
 +++ Actual
 @@ @@
  <?php
  
--// A modified comment
-+// A comment
+-'b';
++'a';
  
  ?>
--
-```
+ ```
 
 ## Try returning a new node
 
 
+```diff
+final class ReplaceStringRector extends AbstractRector {
+     
+     public function refactor(Node $node)
+     {
++         return new Node\Scalar\String_('b');
+     }
 
+}
+```
+
+The returned node replaces the node we're working on.
+Here we are replacing the `String_` node with a new `String_` node containing the text `b`;
+
+✅ Tests are green!
+
+Our new rule is obviously not really useful as it modifies every string to the `b` string.
+
+> **Note**
+> In order to make the process of creating all these files easier we can use the `rector generate` commands.
+> This commande generates the Rector rule, config, examples and test files following the file directory structure followed by the main Rector repository.

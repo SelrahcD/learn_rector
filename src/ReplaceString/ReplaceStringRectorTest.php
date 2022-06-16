@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Selrahcd\LearnRector\ModifyComment;
+namespace Selrahcd\LearnRector\ReplaceString;
 
 use Iterator;
 use Rector\Testing\PHPUnit\AbstractRectorTestCase;
 use Symplify\SmartFileSystem\SmartFileInfo;
 
-final class ModifyCommentRectorTest extends AbstractRectorTestCase
+final class ReplaceStringRectorTest extends AbstractRectorTestCase
 {
     /**
      * @dataProvider provideData()
